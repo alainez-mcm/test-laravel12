@@ -1,0 +1,1 @@
+<a class="btn btn-primary" href="{{ route('components') }}">Browse Component</a>
