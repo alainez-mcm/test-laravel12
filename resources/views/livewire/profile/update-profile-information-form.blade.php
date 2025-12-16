@@ -10,6 +10,7 @@ new class extends Component
 {
     public ?string $full_name = null;
     public string $email;
+    public ?string $profile_photo_path = null;
 
     /**
      * Mount the component.
@@ -18,6 +19,7 @@ new class extends Component
     {
         $this->full_name = Auth::user()->full_name;
         $this->email = Auth::user()->email;
+        $this->profile_photo_path = Auth::user()->profile_photo_path;
     }
 
     /**
@@ -31,6 +33,7 @@ new class extends Component
         $validated = $this->validate([
             'full_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'profile_photo_path' => ['nullable', 'image', 'max:1024'],
         ]);
 
         $user->fill($validated);
@@ -41,7 +44,7 @@ new class extends Component
 
         $user->save();
 
-        $this->dispatch('profile-updated', name: $user->name);
+        $this->dispatch('profile-updated', full_name: $user->full_name);
     }
 
     /**
@@ -77,7 +80,7 @@ new class extends Component
 
     <form wire:submit="updateProfileInformation" class="mt-6 space-y-6">
         <div>
-            <x-input-label for="full_name" :value="__('Name')" />
+            <x-input-label for="full_name" :value="__('Full Name')" />
             <x-text-input wire:model="full_name" id="full_name" name="full_name" type="text" class="mt-1 block w-full" autofocus autocomplete="full_name" />
             <x-input-error class="mt-2" :messages="$errors->get('full_name')" />
         </div>

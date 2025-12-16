@@ -49,10 +49,11 @@ class User extends Authenticatable
         ];
     }
 
-    public function getNameAttribute(): string
+    public function getDisplayNameAttribute(): string
     {
-        return $this->full_name
-            ?: $this->email;
+        return blank($this->full_name)
+            ? $this->email
+            : $this->full_name;
     }
 
     public function profilePhotoUrl(string $size = '256'): string
