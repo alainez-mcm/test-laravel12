@@ -56,28 +56,11 @@ class User extends Authenticatable
             : $this->full_name;
     }
 
-    public function profilePhotoUrl(string $size = '256'): string
-    {
-        if (! $this->profile_photo_path) {
-            return asset('assets/images/avatar-placeholder.png');
-        }
-
-        $file = match ($size) {
-            '64' => 'avatar_64.jpg',
-            '256' => 'avatar_256.jpg',
-            default => 'avatar_256.jpg',
-        };
-
-        return Storage::url("{$this->profile_photo_path}/{$file}");
-    }
-
     public function getProfilePhotoUrlAttribute(): string
     {
-        if ($this->profile_photo_path) {
-            return Storage::url($this->profile_photo_path);
-        }
-
-        return asset('assets/images/avatar-placeholder.png');
+        return $this->profile_photo_path
+            ? Storage::url($this->profile_photo_path)
+            : asset('assets/images/avatar-placeholder.png');
     }
 
     public function setFullNameAttribute($value): void
