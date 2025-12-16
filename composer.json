@@ -9,6 +9,7 @@
     "require": {
         "php": "^8.2",
         "intervention/image": "^3.11",
+        "intervention/image-laravel": "^1.5",
         "laravel-lang/lang": "^15.26.3",
         "laravel/breeze": "^2.3.8",
         "laravel/framework": "^12.42.0",

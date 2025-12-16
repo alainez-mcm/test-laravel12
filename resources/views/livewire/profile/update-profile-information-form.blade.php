@@ -1,16 +1,21 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Session;
+use Intervention\Image\Laravel\Facades\Image;
 
-new class extends Component
-{
+new class extends Component {
+    use WithFileUploads;
+
     public ?string $full_name = null;
     public string $email;
-    public ?string $profile_photo_path = null;
+    public $photo = null;
+    public bool $delete_photo = false;
 
     /**
      * Mount the component.
@@ -19,7 +24,20 @@ new class extends Component
     {
         $this->full_name = Auth::user()->full_name;
         $this->email = Auth::user()->email;
-        $this->profile_photo_path = Auth::user()->profile_photo_path;
+    }
+
+    /**
+     * Esta función maneja el clic en la "X".
+     * Si hay una foto nueva seleccionada, la quita.
+     * Si no, marca la foto actual de la DB para ser borrada al guardar.
+     */
+    public function removePhoto(): void
+    {
+        if ($this->photo) {
+            $this->photo = null;
+        } else {
+            $this->delete_photo = true;
+        }
     }
 
     /**
@@ -33,10 +51,25 @@ new class extends Component
         $validated = $this->validate([
             'full_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
-            'profile_photo_path' => ['nullable', 'image', 'max:1024'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        $user->fill($validated);
+        if ($this->photo) {
+            $image = Image::read($this->photo->getRealPath())
+                ->cover(512, 512)
+                ->toJpeg(90);
+
+            $path = 'profile-photos/' . $user->id . '.jpg';
+            Storage::disk('public')->put($path, (string) $image);
+            $user->profile_photo_path = $path;
+        } elseif ($this->delete_photo) {
+            if ($user->profile_photo_path) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
+            $user->profile_photo_path = null;
+        }
+
+        $user->fill(collect($validated)->except('photo')->toArray());
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -44,7 +77,9 @@ new class extends Component
 
         $user->save();
 
-        $this->dispatch('profile-updated', full_name: $user->full_name);
+        $this->photo = null;
+        $this->delete_photo = false;
+        $this->dispatch('profile-updated');
     }
 
     /**
@@ -69,52 +104,93 @@ new class extends Component
 
 <section>
     <header>
-        <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Profile Information') }}
-        </h2>
-
-        <p class="mt-1 text-sm text-gray-600">
-            {{ __("Update your account's profile information and email address.") }}
-        </p>
+        <h2 class="text-lg font-medium text-gray-900">{{ __('profile.title') }}</h2>
+        <p class="mt-1 text-sm text-gray-600">{{ __('profile.subtitle') }}</p>
     </header>
 
-    <form wire:submit="updateProfileInformation" class="mt-6 space-y-6">
-        <div>
-            <x-input-label for="full_name" :value="__('Full Name')" />
-            <x-text-input wire:model="full_name" id="full_name" name="full_name" type="text" class="mt-1 block w-full" autofocus autocomplete="full_name" />
-            <x-input-error class="mt-2" :messages="$errors->get('full_name')" />
-        </div>
+    <form wire:submit="updateProfileInformation" class="mt-6">
+        <div class="max-w-xl mx-auto">
+            <div class="flex flex-col items-center gap-4 mb-8">
+                <div class="avatar placeholder group relative inline-flex">
 
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1 block w-full" required autocomplete="username" />
-            <x-input-error class="mt-2" :messages="$errors->get('email')" />
+                    <div
+                        class="w-32 h-32 rounded-full overflow-hidden border-2 border-black/10 transition-all duration-300 group-hover:border-black bg-neutral-100 text-neutral-800 relative">
 
-            @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())
-            <div>
-                <p class="text-sm mt-2 text-gray-800">
-                    {{ __('Your email address is unverified.') }}
+                        @if ($photo)
+                            <img src="{{ $photo->temporaryUrl() }}" class="object-cover w-full h-full">
+                        @elseif (auth()->user()->profile_photo_url && !$delete_photo)
+                            <img src="{{ auth()->user()->profile_photo_url }}" class="object-cover w-full h-full">
+                        @else
+                            <div
+                                class="flex items-center justify-center w-full h-full text-3xl font-bold uppercase tracking-wider">
+                                {{ auth()->user()->initials }}
+                            </div>
+                        @endif
 
-                    <button wire:click.prevent="sendVerification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        {{ __('Click here to re-send the verification email.') }}
-                    </button>
-                </p>
+                        <div
+                            class="absolute inset-0 bg-black/60 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
 
-                @if (session('status') === 'verification-link-sent')
-                <p class="mt-2 font-medium text-sm text-green-600">
-                    {{ __('A new verification link has been sent to your email address.') }}
-                </p>
+                            <label for="photo_input"
+                                class="cursor-pointer p-2 bg-white text-black rounded-full hover:scale-110 transition-transform shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <input type="file" id="photo_input" wire:model="photo"
+                                    wire:change="$set('delete_photo', false)" class="hidden" accept="image/*">
+                            </label>
+
+                            @if ($photo || (auth()->user()->profile_photo_path && !$delete_photo))
+                                <button type="button" wire:click="removePhoto"
+                                    class="p-2 bg-black text-white rounded-full hover:scale-110 transition-transform shadow-lg">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div wire:loading wire:target="photo"
+                        class="absolute inset-0 flex items-center justify-center bg-white/60 rounded-full z-20 backdrop-blur-[1px]">
+                        <span class="loading loading-spinner loading-md text-black"></span>
+                    </div>
+                </div>
+
+                @if ($delete_photo)
+                    <span
+                        class="text-[10px] uppercase font-bold tracking-widest text-black bg-gray-100 px-2 py-1 rounded border border-black/10">
+                        {{ __('profile.will_delete_photo') }}
+                    </span>
                 @endif
+
+                <x-input-error :messages="$errors->get('photo')" class="mt-2" />
             </div>
-            @endif
-        </div>
 
-        <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            <div class="space-y-6">
+                <div>
+                    <x-input-label for="full_name" :value="__('profile.full_name')" />
+                    <x-text-input wire:model="full_name" id="full_name" class="mt-1 block w-full" />
+                    <x-input-error :messages="$errors->get('full_name')" />
+                </div>
 
-            <x-action-message class="me-3" on="profile-updated">
-                {{ __('Saved.') }}
-            </x-action-message>
+                <div>
+                    <x-input-label for="email" :value="__('profile.email')" />
+                    <x-text-input wire:model="email" id="email" class="mt-1 block w-full" />
+                    <x-input-error :messages="$errors->get('email')" />
+                </div>
+
+                <div class="flex justify-center pt-2">
+                    <x-primary-button wire:loading.attr="disabled">
+                        {{ __('profile.save') }}
+                    </x-primary-button>
+                </div>
+            </div>
         </div>
     </form>
 </section>

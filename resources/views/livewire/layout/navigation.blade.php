@@ -46,9 +46,9 @@ new class extends Component {
                                 hasPhoto: {{ auth()->user()->profile_photo_path ? 'true' : 'false' }},
                             }"
                                 x-on:profile-photo-updated.window="
-                src = '{{ auth()->user()->fresh()->profile_photo_url }}';
-                hasPhoto = {{ auth()->user()->fresh()->profile_photo_path ? 'true' : 'false' }};
-            "
+                                    src = '{{ auth()->user()->fresh()->profile_photo_url }}';
+                                    hasPhoto = {{ auth()->user()->fresh()->profile_photo_path ? 'true' : 'false' }};
+                                "
                                 class="avatar">
                                 <!-- Con foto -->
                                 <template x-if="hasPhoto">
