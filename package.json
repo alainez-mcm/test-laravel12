@@ -8,15 +8,13 @@
     "devDependencies": {
         "@iconify/json": "^2.2.418",
         "@iconify/tailwind4": "^1.2.0",
-        "@tailwindcss/forms": "^0.5.2",
+        "@tailwindcss/forms": "^0.5.10",
         "@tailwindcss/vite": "^4.1.18",
-        "autoprefixer": "^10.4.2",
         "axios": "^1.13.2",
         "concurrently": "^9.2.1",
         "flyonui": "^2.4.1",
         "laravel-vite-plugin": "^2.0.1",
-        "postcss": "^8.4.31",
-        "tailwindcss": "^3.1.0",
+        "tailwindcss": "^4.1.18",
         "vite": "^7.3.0"
     }
 }

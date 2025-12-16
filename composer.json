@@ -7,12 +7,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "laravel-lang/lang": "^15.26",
-        "laravel/breeze": "^2.3",
+        "intervention/image": "^3.11",
+        "laravel-lang/lang": "^15.26.3",
+        "laravel/breeze": "^2.3.8",
         "laravel/framework": "^12.42.0",
         "laravel/tinker": "^2.10.2",
-        "livewire/livewire": "^3.6.4",
-        "livewire/volt": "^1.7.0",
+        "livewire/livewire": "^3.7.1",
+        "livewire/volt": "^1.10.1",
         "spatie/laravel-permission": "^6.24"
     },
     "require-dev": {
